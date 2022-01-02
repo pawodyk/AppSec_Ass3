@@ -8,7 +8,7 @@ In each of the 4 options below, the fully working, fully implemented code is wor
 #### Malicious file detection tool (hashing)
 File identification and malicious code detection are important parts of an investigation. The idea of this application is to scan a file system and identify benign or malicious files. In order to rule out the benign files, you should use a look up database, such as NIST NSRL. The remaining files should be uploaded to VirusTotal (VT) via the API and checked. I would suggest you use a virtual machine as your test environment, so that you can add some malicious files to the system to show the reports returned from VT.
 
-#### Functions “could” include:
+#### Functions "could" include:
 - Menu()
 - Scanfilesystem() - function to walk through the file system and parse the files. All files should be hashed using a suitable hash (e.g., MD% or SHA).
 - Queryhashedb() - this function will do a lookup of the hashes on a benign DB and if the hash is found, it is discarded from the list.
@@ -32,4 +32,5 @@ run virtual enviroment: ```.\venv_MalFileSetTool\Scripts\activate```
 
 install python requirements for this project: ```pip3 install -r requirements.txt```
 
-## code
+## Documentation
+
