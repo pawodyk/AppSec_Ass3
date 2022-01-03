@@ -12,27 +12,64 @@ VT_API_KEY = os.getenv('VT_API')
 sample_file = open('sample\cmd.exe', 'rb')
 sha1 = hashlib.sha1(sample_file.read())
 
-print('you are searching for : {}'.format(sha1.hexdigest().capitalize()))
-print('you are using : {}'.format(VT_API_KEY))
+# print('you are searching for : {}'.format(sha1.hexdigest().capitalize()))
+# print('you are using : {}'.format(VT_API_KEY))
 
 
 # VT_API - Get a file report: https://developers.virustotal.com/reference/file-info
-url = "https://www.virustotal.com/api/v3/files/" + sha1.hexdigest()
-headers = {
-    "Accept": "application/json",
-    "x-apikey": VT_API_KEY
-    }
-response = requests.request("GET", url, headers=headers)
+#url = "https://www.virustotal.com/api/v3/files/" + sha1.hexdigest()
+#headers = {
+#    "Accept": "application/json",
+#    "x-apikey": VT_API_KEY
+#    }
+#response = requests.request("GET", url, headers=headers)
 #print(response.text)
 
 
-file_out = open("output.txt", "w")
-file_out.write(response.text)
-file_out.close()
+#file_out = open("output.json", "w")
+#file_out.write(response.text)
+#file_out.close()
 
-os.startfile('output.txt')
+#os.startfile('output.json')
+
+#json_resposne = response.json()
+
+
+with open('output.json') as file:
+    json_resposne = json.load(file)
+
+    # print(type(json_resposne))
+    # print(type(json_resposne['data']['attributes']['last_analysis_stats']))
+
+    #for key in json_resposne['data']['attributes']['last_analysis_stats']:
+    #    print(type(key))
+    #    pass
+
+# print(json.dumps(json_resposne['data']['attributes']['last_analysis_stats'], indent=4))
+
+# dictionary = json_resposne['data'] #['attributes']['last_analysis_stats']
+# for item in dictionary:
+#     if item == 'attributes':
+#         print(dictionary[item])
+
+#for line in dictionary: print(line, dictionary[line])
+
+# for key in json_resposne.keys():
+#     if key == 'type_description':
+#         print("File type: ", json_resposne[key])
+#     elif key == 'meaningful_name':
+#         print('file name: ', json_resposne[key])
+#     print(key)
+
+
+#d = dict(json_resposne)
+
+# for k, v in d['data'].items():
+#     print(k, v)
+
+
 
 
 sample_file.close()
 
-print("end")
+print("\n******END******\n")

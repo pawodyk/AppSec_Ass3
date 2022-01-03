@@ -2,3 +2,4 @@ venv_MalFileSetTool/
 __pycache__/
 sample/*
 .env
+NSRLFile.txt

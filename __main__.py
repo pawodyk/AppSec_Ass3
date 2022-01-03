@@ -3,6 +3,12 @@ import hashlib
 from dotenv import load_dotenv
 
 def main():
+    load_dotenv()
+    VT_API_KEY = os.getenv('VT_API')    
+    
+    
+
+def test():
     hash_file = open('sample\hashes.txt', 'r')
     hash_list = hash_file.readlines()
     sample_file = open('sample\sample.exe', 'rb')
@@ -15,10 +21,10 @@ def main():
     hash_file.close()
 
 
-load_dotenv()
 
-VT_API_KEY = os.getenv('VT_API')
+
+
+
+
 
 main()
-#print('you are using : {}'.format(VT_API_KEY))
-print("end")
