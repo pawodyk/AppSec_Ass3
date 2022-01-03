@@ -39,16 +39,20 @@ def scanFiles(dirpath):
             subdir.append(path)
         elif os.path.isfile(path):
             out = readfile(path)
-            #print(out['name'],out['sha1'])
-            file_check = None # checkFileIsKnown(out['sha1'])
+            print('checking file: ',out['name'],out['sha1'])
+            file_check = checkFileIsKnown(out['sha1'])
             if file_check is not None:
                 out['known_file_results'] = file_check
             else:
-                print(checkFileInVT(out['sha1']))
+                VT_result = checkFileInVT(out['sha1'])
+                out['VT_result'] = VT_result
                 time.sleep(30)
 
 
-            print(out)
+            # print(out)
+            with open("output.json", "a") as file_out:
+                json_file = json.dumps(out, indent=4)
+                file_out.write(json_file)
 
     for directory in subdir:
         print('\n*** lookup in', directory, '***')
@@ -80,7 +84,8 @@ def checkFileIsKnown(hash):
         # print(response_json)
         return dict(response_json)
     else:
-        print("not found")
+        #print("not found")
+        pass
 
 def checkFileInVT(hash):
     
@@ -91,10 +96,10 @@ def checkFileInVT(hash):
     "x-apikey": VT_API_KEY
     }
     response = requests.request("GET", url, headers=headers)
-    print(response.text)
+    # print(response.text)
 
-    with open("output.json", "w") as file_out:
-        file_out.write(response.text)
+    # with open("output.json", "a") as file_out:
+    #     file_out.write(response.text)
 
     ##opens file in the os for inspection
     #os.startfile('output.json')
