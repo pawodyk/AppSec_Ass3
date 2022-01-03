@@ -1,9 +1,11 @@
 import os
 import hashlib
 from dotenv import load_dotenv
+import requests
+import json
 
 def main():
-    scan("D:\\Desktop\\Code\\MalFileDetTool") ## this will be supplied by the user.
+    #scanFiles("D:\\Desktop\\Code\\MalFileDetTool") ## this will be supplied by the user.
     pass
     
 
@@ -21,7 +23,7 @@ def test():
     hash_file.close()
 
 
-def scan(dirpath):
+def scanFiles(dirpath):
     os.chdir(dirpath)
 
     subdir = []
@@ -37,7 +39,7 @@ def scan(dirpath):
 
     for directory in subdir:
         print('\n*** lookup in', directory, '***')
-        scan(directory)
+        scanFiles(directory)
 
         
 
@@ -56,7 +58,9 @@ def readfile(filepath):
 
 
 load_dotenv()
-
 VT_API_KEY = os.getenv('VT_API')  
+if VT_API_KEY is None:
+    print("API Key not retrived from .env pelase enter manually:")
+    VT_API_KEY = input()
 
 main()
