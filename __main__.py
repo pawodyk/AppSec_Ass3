@@ -6,7 +6,9 @@ import json
 
 def main():
     scanFiles("D:\\Desktop\\Code\\MalFileDetTool\\sample") ## this will be supplied by the user.
-    
+    #print(checkFileIsKnown('0000004DA6391F7F5D2F7FCCF36CEBDA60C6EA02'))
+    #print(checkFileIsKnown('40ce9b61ba37022e1b3431b8ee1b37b6eb2f87ac'))
+
     pass
     
 
@@ -36,7 +38,12 @@ def scanFiles(dirpath):
             subdir.append(path)
         elif os.path.isfile(path):
             out = readfile(path)
-            print(out['name'],out['sha1'])
+            #print(out['name'],out['sha1'])
+            file_check = checkFileIsKnown(out['sha1'])
+            if file_check is not None:
+                out['known_file_results'] = file_check
+
+            print(out)
 
     for directory in subdir:
         print('\n*** lookup in', directory, '***')
@@ -57,8 +64,18 @@ def readfile(filepath):
 
     return out
 
-def checkFileIsKnown():
-    pass
+def checkFileIsKnown(hash):
+    url = 'http://bin-test.shadowserver.org/api?sha1=' + hash
+    response = requests.request("GET", url)
+    response_text = response.text
+
+    # print(len(response_text))
+    if len(response_text) > 42:
+        response_json = json.JSONDecoder().decode(response_text[41:])
+        # print(response_json)
+        return dict(response_json)
+    else:
+        print("not found")
 
 def checkFileInVT():
     pass
