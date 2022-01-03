@@ -3,7 +3,7 @@ import hashlib
 from dotenv import load_dotenv
 
 def main():
-    scan("D:\\Desktop\\Code\\MalFileDetTool\\sample")
+    scan("D:\\Desktop\\Code\\MalFileDetTool") ## this will be supplied by the user.
     pass
     
 
@@ -23,10 +23,21 @@ def test():
 
 def scan(dirpath):
     os.chdir(dirpath)
+
+    subdir = []
+
     for file in os.listdir():
-        filepath = os.getcwd() + '\\' + file
-        out = readfile(filepath)
-        print(out['name'],out['sha1'])
+        path = os.path.join(os.getcwd(), file)
+        
+        if os.path.isdir(path):
+            subdir.append(path)
+        elif os.path.isfile(path):
+            out = readfile(path)
+            print(out['name'],out['sha1'])
+
+    for directory in subdir:
+        print('\n*** lookup in', directory, '***')
+        scan(directory)
 
         
 
