@@ -1,5 +1,6 @@
 import os
 import hashlib
+from dotenv import load_dotenv
 
 def main():
     hash_file = open('sample\hashes.txt', 'r')
@@ -10,6 +11,14 @@ def main():
     print(sha1.hexdigest().capitalize())
     print(hash_list[0])
 
+    sample_file.close()
+    hash_file.close()
+
+
+load_dotenv()
+
+VT_API_KEY = os.getenv('VT_API')
 
 main()
+#print('you are using : {}'.format(VT_API_KEY))
 print("end")
