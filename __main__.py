@@ -3,6 +3,7 @@ import hashlib
 from dotenv import load_dotenv
 import requests
 import json
+import time
 
 def main():
     scanFiles("D:\\Desktop\\Code\\MalFileDetTool\\sample") ## this will be supplied by the user.
@@ -39,9 +40,13 @@ def scanFiles(dirpath):
         elif os.path.isfile(path):
             out = readfile(path)
             #print(out['name'],out['sha1'])
-            file_check = checkFileIsKnown(out['sha1'])
+            file_check = None # checkFileIsKnown(out['sha1'])
             if file_check is not None:
                 out['known_file_results'] = file_check
+            else:
+                print(checkFileInVT(out['sha1']))
+                time.sleep(30)
+
 
             print(out)
 
@@ -77,8 +82,27 @@ def checkFileIsKnown(hash):
     else:
         print("not found")
 
-def checkFileInVT():
-    pass
+def checkFileInVT(hash):
+    
+    #VT_API - Get a file report: https://developers.virustotal.com/reference/file-info
+    url = "https://www.virustotal.com/api/v3/files/" + hash
+    headers = {
+    "Accept": "application/json",
+    "x-apikey": VT_API_KEY
+    }
+    response = requests.request("GET", url, headers=headers)
+    print(response.text)
+
+    with open("output.json", "w") as file_out:
+        file_out.write(response.text)
+
+    ##opens file in the os for inspection
+    #os.startfile('output.json')
+
+    json_resposne = response.json()
+
+    return json_resposne
+
 
 def uploadFileToVT():
     pass
