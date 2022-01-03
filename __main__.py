@@ -5,7 +5,8 @@ import requests
 import json
 
 def main():
-    #scanFiles("D:\\Desktop\\Code\\MalFileDetTool") ## this will be supplied by the user.
+    scanFiles("D:\\Desktop\\Code\\MalFileDetTool\\sample") ## this will be supplied by the user.
+    
     pass
     
 
@@ -56,11 +57,21 @@ def readfile(filepath):
 
     return out
 
+def checkFileIsKnown():
+    pass
+
+def checkFileInVT():
+    pass
+
+def uploadFileToVT():
+    pass
+
 
 load_dotenv()
-VT_API_KEY = os.getenv('VT_API')  
+VT_API_KEY = os.getenv('VT_API')
 if VT_API_KEY is None:
     print("API Key not retrived from .env pelase enter manually:")
     VT_API_KEY = input()
+
 
 main()
