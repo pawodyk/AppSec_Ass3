@@ -7,8 +7,8 @@ import time
 
 def main():
     scanFiles("D:\\Desktop\\Code\\MalFileDetTool\\sample") ## this will be supplied by the user.
-    #print(checkFileIsKnown('0000004DA6391F7F5D2F7FCCF36CEBDA60C6EA02'))
-    #print(checkFileIsKnown('40ce9b61ba37022e1b3431b8ee1b37b6eb2f87ac'))
+    #print(checkKnownFilesDB('0000004DA6391F7F5D2F7FCCF36CEBDA60C6EA02'))
+    #print(checkKnownFilesDB('40ce9b61ba37022e1b3431b8ee1b37b6eb2f87ac'))
 
     pass
     
@@ -40,7 +40,7 @@ def scanFiles(dirpath):
         elif os.path.isfile(path):
             out = readfile(path)
             print('checking file: ',out['name'],out['sha1'])
-            file_check = checkFileIsKnown(out['sha1'])
+            file_check = checkKnownFilesDB(out['sha1'])
             if file_check is not None:
                 out['known_file_results'] = file_check
             else:
@@ -73,7 +73,7 @@ def readfile(filepath):
 
     return out
 
-def checkFileIsKnown(hash):
+def checkKnownFilesDB(hash):
     url = 'http://bin-test.shadowserver.org/api?sha1=' + hash
     response = requests.request("GET", url)
     response_text = response.text
