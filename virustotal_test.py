@@ -9,34 +9,37 @@ load_dotenv()
 
 VT_API_KEY = os.getenv('VT_API')
 
-sample_file = open('sample\cmd.exe', 'rb')
-sha1 = hashlib.sha1(sample_file.read())
+# sample_file = open('sample\cmd.exe', 'rb')
+# sha1 = hashlib.sha1(sample_file.read())
+
+# sha1 = 'ae12bb54af31227017feffd9598a6f5e'
+sha1 = '7D39E928E4D6616CE1DB50D2B19C1DE703882E15'
 
 # print('you are searching for : {}'.format(sha1.hexdigest().capitalize()))
 # print('you are using : {}'.format(VT_API_KEY))
 
 
 # VT_API - Get a file report: https://developers.virustotal.com/reference/file-info
-#url = "https://www.virustotal.com/api/v3/files/" + sha1.hexdigest()
-#headers = {
-#    "Accept": "application/json",
-#    "x-apikey": VT_API_KEY
-#    }
-#response = requests.request("GET", url, headers=headers)
-#print(response.text)
+url = "https://www.virustotal.com/api/v3/files/" + sha1
+headers = {
+   "Accept": "application/json",
+   "x-apikey": VT_API_KEY
+   }
+response = requests.request("GET", url, headers=headers)
+print(response.text)
 
 
-#file_out = open("output.json", "w")
-#file_out.write(response.text)
-#file_out.close()
+file_out = open("notdetected.json", "w")
+file_out.write(response.text)
+file_out.close()
 
-#os.startfile('output.json')
+# os.startfile('output.json')
 
-#json_resposne = response.json()
+# json_resposne = response.json()
 
 
-with open('output.json') as file:
-    json_resposne = json.load(file)
+# with open('output.json') as file:
+#     json_resposne = json.load(file)
 
     # print(type(json_resposne))
     # print(type(json_resposne['data']['attributes']['last_analysis_stats']))
@@ -70,6 +73,6 @@ with open('output.json') as file:
 
 
 
-sample_file.close()
+# sample_file.close()
 
 print("\n******END******\n")

@@ -1,15 +1,127 @@
-import os
-import hashlib
+import os , hashlib, json, time
 from dotenv import load_dotenv
-import requests
-import json
-import time
+import requests, magic, click
 
-def main():
 
-    #print(LOG_DIR)
+# set global variables
+load_dotenv()
+VT_API_KEY = os.getenv('VT_API')
+LOG_TO_FILE = True
+VERBOSE = False
 
-    scanFiles("D:\\Desktop\\Code\\MalFileDetTool\\sample") ## this will be supplied by the user.
+LOG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "log")
+REP_DIR = os.path.dirname(os.path.realpath(__file__))
+
+# functions
+
+def setVTKey(input):
+    global VT_API_KEY
+    if isinstance(input, str):
+        if len(input) == 64:
+            VT_API_KEY = (input)
+        ## else raise Exception
+    ## else raise Exception
+
+def getVTKey():
+    global VT_API_KEY
+    return VT_API_KEY
+
+def setLogToFile(input):
+    global LOG_TO_FILE
+    if isinstance(input, bool):
+        LOG_TO_FILE = input
+    ## else raise Exception
+
+def getLogToFile():
+    global LOG_TO_FILE
+    return LOG_TO_FILE
+
+def setIsVerbose(input):
+    global VERBOSE
+    if isinstance(input, bool):
+        VERBOSE = input
+    ## else raise Exception
+
+def getIsVerbose():
+    global VERBOSE
+    return VERBOSE
+
+def setReportDirectory(input):
+    global REP_DIR
+    abs_input = os.path.abspath(input)
+    if os.path.isdir(input):
+        REP_DIR = abs_input
+    else:
+        REP_DIR = os.path.dirname(abs_input)
+
+@click.command()
+@click.argument('file_path', type=click.Path(exists=True, readable=True))
+@click.option('-v', '--verbose', 'isVerbose', is_flag=True,
+    help="Make output more verbose")
+@click.option('--log/--no_log', 'Log', default=True, is_flag=True,
+    help="Define if the log files for individual operations are to be created in .\\log folder")
+@click.option('-r', '--report', 'report_ouput', default=REP_DIR, type=click.Path(exists=True, dir_okay=True, writable=True), 
+    help="Change the location for the Report file")
+@click.option('-H', '--hash_only', 'hash_only', is_flag=True,
+    help="prevent software from uplaoding files to VT, the software will only check Hashes")
+@click.option('-i', '--interface', is_flag=True, help = "execute user interface")
+@click.option('-w', '--wait', 'wait_time', default=1, type=click.IntRange(min=0, max=60, clamp=True),
+    help="define wait time between file scans in seconds")
+def main(file_path, isVerbose, Log, report_ouput, hash_only, interface, wait_time):
+    """
+    FILE_PATH defines the file or Directory to be scanned.
+
+    ***
+
+    This software scan the files in the provided path (directory or individual file)
+    and compares the hash value on the list of known applicaions 
+    on the online databases provided by http://bin-test.shadowserver.org/
+    
+    If the file is not defined the program will query the Virus Total API 
+    to ensure the file is not a malware.
+
+    If the file is not on the VT database the program will try to upload the file
+    for analysis.
+    """
+
+    setLogToFile(Log)
+
+    if isVerbose: setIsVerbose(True)
+    if interface: runUserInterface()
+    
+
+    # print(file_path, isVerbose, noLog, report_ouput, hash_only)
+
+    # print(LOG_TO_FILE, VERBOSE, LOG_DIR, REP_DIR)
+
+
+    ## basic verification of the VT API Key
+    if VT_API_KEY is None or len(VT_API_KEY) != 64:
+        print("API Key not retrived from .env pelase enter manually:")
+        input_API_KEY = input()
+        try:
+            setVTKey(input_API_KEY)
+        except Exception:
+            print('Incorrect VirusTotal API')
+            exit()
+
+        
+        
+
+    ## check does the user want to scan file or folder
+    if os.path.isfile(file_path):
+        analize(file_path)
+    else:
+        scanFiles(file_path)
+
+
+    # print("This is the application to scan files using list of known programs and VirusTotal")
+
+    # path_to_scan = input("Please enter the full path to the folder you would like to scan:")
+    # scanFiles(file_path)
+
+
+    # scanFiles("D:\\Desktop\\Code\\MalFileDetTool") ## this will be supplied by the user.
 
     ### used for testing:
     # print(checkKnownFilesDB('0000004DA6391F7F5D2F7FCCF36CEBDA60C6EA02'))
@@ -19,70 +131,71 @@ def main():
     # uploadFileToVT('D:\\Desktop\\Code\\MalFileDetTool\\test\\cmd.exe')
 
     pass
-    
-
-
-def test():
-    hash_file = open('sample\hashes.txt', 'r')
-    hash_list = hash_file.readlines()
-    sample_file = open('sample\sample.exe', 'rb')
-    sha1 = hashlib.sha1(sample_file.read())
-
-    print(sha1.hexdigest().capitalize())
-    print(hash_list[0])
-
-    sample_file.close()
-    hash_file.close()
 
 
 def scanFiles(dirpath):
     os.chdir(dirpath)
-
     subdir = []
-
     for file in os.listdir():
-        path = os.path.join(os.getcwd(), file)
-        
+        path = os.path.join(os.getcwd(), file)    
         if os.path.isdir(path):
             subdir.append(path)
         elif os.path.isfile(path):
-            out = readfile(path)
-            print('checking file:\t',out['name'],out['sha1'])
-            file_check = checkKnownFilesDB(out['sha1'])
-            if file_check is not None:
-                out['known_file_results'] = file_check
-            else:
-                VT_result = checkFileInVT(out['sha1'])
-                out['VT_result'] = VT_result
-                time.sleep(30)
-
-            # checkFileInVT(out['sha1'])
-            # time.sleep(30)
-            # uploadFileToVT(os.path.join(out['path'],out['name']))
-
-            # print(out)
-
-            json_file = json.dumps(out, indent=4)
-
-            logToFile(json_file, 'output.json')
-
+            analize(path)
+            time.sleep(1)
     for directory in subdir:
         print('\n*** lookup in', directory, '***')
         scanFiles(directory)
     
-
-def readfile(filepath):
-
-    out = {}
-    with open(filepath, 'rb') as file:
-        file_sha1 = hashlib.sha1(file.read())
-        pathsplit = os.path.split(filepath)
-        # print('filename: {1}\t located at {0}\t SHA1: {2}'.format(pathsplit[0],pathsplit[1],))  # , file_sha1.hexdigest()
-        out.update({'name' : pathsplit[1]})
-        out.update({'path' : pathsplit[0]})
-        out.update({'sha1' : file_sha1.hexdigest()})
+def analize(path):
+    out = readfile(path)
+    print('checking file:\t',out['name'],out['sha1'])
+    file_check = checkKnownFilesDB(out['sha1'])
+    if file_check is not None:
+        print( out['sha1'] + " was found in " + file_check['source'])
+        out['known_file_results'] = file_check
+    else:
+        if VERBOSE:
+            print("File not in the known file database, checking in VT")
+        VT_result = checkFileInVT(out['sha1'])
+        if 'error' in VT_result:
+            if VERBOSE:
+                print(VT_result['error']['code'])
+            if VT_result['error']['code'] == 'NotFoundError':
+                if VERBOSE:
+                    print("File not in VT database, uploading the file for analysis")
+                output_upload_file = uploadFileToVT(os.path.join(out['path'],out['name']))
+                if 'data' in output_upload_file:
+                    if output_upload_file['data']['type'] == 'analysis':
+                        print('File uploaded sucessfully to VT')
+                        out['VT_result'] = {'status': 'uploaded for analysis', 'link': 'https://www.virustotal.com/api/v3/files/' + out['sha1']}
+        else:
+            out['VT_result'] = VT_result
+        
+    if VERBOSE:
+        print(out)
+    json_file = json.dumps(out, indent=4)
+    logToFile(json_file, 'output.json')
 
     return out
+
+def readfile(filepath):
+    if os.path.isfile(filepath):
+        out = {}
+        with open(filepath, 'rb') as file:
+            file_sha1 = hashlib.sha1(file.read())
+            pathsplit = os.path.split(filepath)
+            file_type = magic.from_file(filepath, mime=True)
+            # print('filename: {1}\t located at {0}\t SHA1: {2}'.format(pathsplit[0],pathsplit[1],))  # , file_sha1.hexdigest()
+            out.update({'name' : pathsplit[1]})
+            out.update({'path' : pathsplit[0]})
+            out.update({'sha1' : file_sha1.hexdigest()})
+            out.update({'type' : file_type})
+            
+        return out
+    else:
+        return None
+
 
 def checkKnownFilesDB(hash):
     url = 'http://bin-test.shadowserver.org/api?sha1=' + hash
@@ -92,14 +205,14 @@ def checkKnownFilesDB(hash):
     # print(len(response_text))
     if len(response_text) > 42:
         response_json = json.JSONDecoder().decode(response_text[41:])
-        print(response_json)
+        # logToFile(response_json, "outputFileDB.json")
 
-        logToFile(response.text, "outputFileDB.json")
+        print(response_json)
         
         return dict(response_json)
     else:
-        print("not found")
-        pass
+        return None
+
 
 def checkFileInVT(hash):
     
@@ -110,12 +223,11 @@ def checkFileInVT(hash):
         "x-apikey": VT_API_KEY
     }
     response = requests.request("GET", url, headers=headers)
-    print(response.text)
+    json_resposne = response.json()
 
     logToFile(response.text, 'outputVT_hash.json')
 
-    json_resposne = response.json()
-
+    time.sleep(30)
     return json_resposne
 
 
@@ -131,25 +243,27 @@ def uploadFileToVT(path):
         "x-apikey": VT_API_KEY
     }
 
-
     response = requests.request("POST", url, data=payload, headers=headers)
 
     logToFile("uploaded to virus total:" + response.text, "outputVT_file.txt")
     
-    
+    time.sleep(30)
+    return response.json()
+
 
 def logToFile(text, filename):
-    file = os.path.join(LOG_DIR, filename)
-    with open(file, "a") as file_out:
-        file_out.write(text)
+    if LOG_TO_FILE:
+        text = str(text)
+        file = os.path.join(LOG_DIR, filename)
+        with open(file, "a") as file_out:
+            file_out.write(text)
 
-load_dotenv()
-VT_API_KEY = os.getenv('VT_API')
-if VT_API_KEY is None:
-    print("API Key not retrived from .env pelase enter manually:")
-    VT_API_KEY = input()
+def report(out):
+    pass
 
-LOG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "log")
+def runUserInterface():
+    print("user interface will go here!")
+    exit()
 
-
-main()
+if __name__ == '__main__':
+    main()
