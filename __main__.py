@@ -1,4 +1,4 @@
-import os , hashlib, json, time
+import os , hashlib, json, time, csv
 from dotenv import load_dotenv
 import requests, magic, click
 
@@ -8,6 +8,8 @@ load_dotenv()
 VT_API_KEY = os.getenv('VT_API')
 LOG_TO_FILE = True
 VERBOSE = False
+WAIT_TIMER = 0
+HASH_ONLY_MODE = False
 
 LOG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "log")
 REP_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -54,20 +56,28 @@ def setReportDirectory(input):
     else:
         REP_DIR = os.path.dirname(abs_input)
 
+def setWaitTime(input):
+    global WAIT_TIMER
+    WAIT_TIMER = input
+
+def setHashOnlyMode(input):
+    global HASH_ONLY_MODE
+    HASH_ONLY_MODE = input
+
 @click.command()
 @click.argument('file_path', type=click.Path(exists=True, readable=True))
 @click.option('-v', '--verbose', 'isVerbose', is_flag=True,
     help="Make output more verbose")
-@click.option('--log/--no_log', 'Log', default=True, is_flag=True,
+@click.option('--log/--no_log', 'log', default=True, is_flag=True,
     help="Define if the log files for individual operations are to be created in .\\log folder")
 @click.option('-r', '--report', 'report_ouput', default=REP_DIR, type=click.Path(exists=True, dir_okay=True, writable=True), 
     help="Change the location for the Report file")
 @click.option('-H', '--hash_only', 'hash_only', is_flag=True,
     help="prevent software from uplaoding files to VT, the software will only check Hashes")
 @click.option('-i', '--interface', is_flag=True, help = "execute user interface")
-@click.option('-w', '--wait', 'wait_time', default=1, type=click.IntRange(min=0, max=60, clamp=True),
+@click.option('-w', '--wait', 'wait_time', default=30, type=click.IntRange(min=0, max=60, clamp=True),
     help="define wait time between file scans in seconds")
-def main(file_path, isVerbose, Log, report_ouput, hash_only, interface, wait_time):
+def main(file_path, isVerbose, log, report_ouput, hash_only, interface, wait_time):
     """
     FILE_PATH defines the file or Directory to be scanned.
 
@@ -83,17 +93,11 @@ def main(file_path, isVerbose, Log, report_ouput, hash_only, interface, wait_tim
     If the file is not on the VT database the program will try to upload the file
     for analysis.
     """
-
-    setLogToFile(Log)
-
+    setLogToFile(log)
+    setWaitTime(wait_time)
+    setHashOnlyMode(hash_only)
     if isVerbose: setIsVerbose(True)
     if interface: runUserInterface()
-    
-
-    # print(file_path, isVerbose, noLog, report_ouput, hash_only)
-
-    # print(LOG_TO_FILE, VERBOSE, LOG_DIR, REP_DIR)
-
 
     ## basic verification of the VT API Key
     if VT_API_KEY is None or len(VT_API_KEY) != 64:
@@ -105,47 +109,30 @@ def main(file_path, isVerbose, Log, report_ouput, hash_only, interface, wait_tim
             print('Incorrect VirusTotal API')
             exit()
 
-        
-        
-
     ## check does the user want to scan file or folder
     if os.path.isfile(file_path):
         analize(file_path)
     else:
-        scanFiles(file_path)
-
-
-    # print("This is the application to scan files using list of known programs and VirusTotal")
-
-    # path_to_scan = input("Please enter the full path to the folder you would like to scan:")
-    # scanFiles(file_path)
-
-
-    # scanFiles("D:\\Desktop\\Code\\MalFileDetTool") ## this will be supplied by the user.
-
-    ### used for testing:
-    # print(checkKnownFilesDB('0000004DA6391F7F5D2F7FCCF36CEBDA60C6EA02'))
-    # print(checkKnownFilesDB('40ce9b61ba37022e1b3431b8ee1b37b6eb2f87ac'))
-
-    # print(checkFileInVT('D:\\Desktop\\Code\\MalFileDetTool\\test\\cmd.exe'))
-    # uploadFileToVT('D:\\Desktop\\Code\\MalFileDetTool\\test\\cmd.exe')
-
-    pass
+        x = scanFiles(file_path)
+        report(x, report_ouput)
 
 
 def scanFiles(dirpath):
     os.chdir(dirpath)
     subdir = []
+    files = []
     for file in os.listdir():
         path = os.path.join(os.getcwd(), file)    
         if os.path.isdir(path):
             subdir.append(path)
         elif os.path.isfile(path):
-            analize(path)
+            files.append(analize(path))
             time.sleep(1)
     for directory in subdir:
         print('\n*** lookup in', directory, '***')
         scanFiles(directory)
+    
+    return files
     
 def analize(path):
     out = readfile(path)
@@ -162,14 +149,24 @@ def analize(path):
             if VERBOSE:
                 print(VT_result['error']['code'])
             if VT_result['error']['code'] == 'NotFoundError':
-                if VERBOSE:
-                    print("File not in VT database, uploading the file for analysis")
-                output_upload_file = uploadFileToVT(os.path.join(out['path'],out['name']))
-                if 'data' in output_upload_file:
-                    if output_upload_file['data']['type'] == 'analysis':
-                        print('File uploaded sucessfully to VT')
-                        out['VT_result'] = {'status': 'uploaded for analysis', 'link': 'https://www.virustotal.com/api/v3/files/' + out['sha1']}
+                if not HASH_ONLY_MODE:
+                    if VERBOSE:
+                        print("File not in VT database, uploading the file for analysis")
+                    output_upload_file = uploadFileToVT(os.path.join(out['path'],out['name']))
+                    if 'data' in output_upload_file:
+                        if output_upload_file['data']['type'] == 'analysis':
+                            report_link = 'https://www.virustotal.com/gui/file/' + out['sha1']
+                            print('File uploaded sucessfully to VT @ {}'.format(report_link))
+                            out['VT_result'] = {'status': 'uploaded for analysis', 'link': report_link}
+                else:
+                    print("File not in VT database")
         else:
+            
+            VT_rep = 'negative' if VT_result['data']['attributes']['reputation'] < 0 else 'positive'
+            VT_malicious = VT_result['data']['attributes']['last_analysis_stats']['malicious']
+            report_link = 'https://www.virustotal.com/gui/file/' + out['sha1']
+            print("File {0} found in VT database with reputation of {1}, and {2} vendors marked it as malicious ".format(out['sha1'], VT_rep, VT_malicious))
+            print('for full report see: ' + report_link)
             out['VT_result'] = VT_result
         
     if VERBOSE:
@@ -205,9 +202,7 @@ def checkKnownFilesDB(hash):
     # print(len(response_text))
     if len(response_text) > 42:
         response_json = json.JSONDecoder().decode(response_text[41:])
-        # logToFile(response_json, "outputFileDB.json")
-
-        print(response_json)
+        logToFile(response_json, "outputFileDB.json")
         
         return dict(response_json)
     else:
@@ -227,11 +222,12 @@ def checkFileInVT(hash):
 
     logToFile(response.text, 'outputVT_hash.json')
 
-    time.sleep(30)
+    time.sleep(WAIT_TIMER)
     return json_resposne
 
 
 def uploadFileToVT(path):
+
     url = "https://www.virustotal.com/api/v3/files"
 
     payload = ""
@@ -247,7 +243,7 @@ def uploadFileToVT(path):
 
     logToFile("uploaded to virus total:" + response.text, "outputVT_file.txt")
     
-    time.sleep(30)
+    time.sleep(WAIT_TIMER)
     return response.json()
 
 
@@ -258,8 +254,44 @@ def logToFile(text, filename):
         with open(file, "a") as file_out:
             file_out.write(text)
 
-def report(out):
+def report(out_list, path):
+    report_path = os.path.join(path,'report.csv')
+    first_row = [
+        'name', 
+        'path', 
+        'sha1', 
+        'type',
+        'In Known files database',
+        'signed by',
+        'VT Reputation',
+        'VT malicious',
+        'VT undetected',
+        'VT harmless'
+        ]
+
+    with open(report_path, 'w') as file:
+        csvwriter = csv.writer(file, delimiter=',',)
+        csvwriter.writerow(first_row)
+        for data in out_list:
+            data_row = [
+                data['name'],
+                data['path'],
+                data['sha1'],
+                data['type'],
+                data['known_file_results']['source'] if 'known_file_results' in data else 'n/a',
+                data['known_file_results']['signer'] if 'known_file_results' in data else 'n/a',
+                data['VT_result']['data']['attributes']['reputation'] if 'VT_result' in data else 'n/a',
+                data['VT_result']['data']['attributes']['last_analysis_stats']['malicious'] if 'VT_result' in data else 'n/a',
+                data['VT_result']['data']['attributes']['last_analysis_stats']['undetected'] if 'VT_result' in data else 'n/a',
+                data['VT_result']['data']['attributes']['last_analysis_stats']['harmless'] if 'VT_result' in data else 'n/a']
+
+            csvwriter.writerow(data_row)
+            if VERBOSE:
+                print("writing data to file...")
+    print('report completed')
     pass
+
+
 
 def runUserInterface():
     print("user interface will go here!")
