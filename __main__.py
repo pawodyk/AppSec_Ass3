@@ -10,6 +10,7 @@ LOG_TO_FILE = True
 VERBOSE = False
 WAIT_TIMER = 0
 HASH_ONLY_MODE = False
+VT_SCAN_TIMESTAMP = 0
 
 LOG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "log")
 REP_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -63,6 +64,14 @@ def setWaitTime(input):
 def setHashOnlyMode(input):
     global HASH_ONLY_MODE
     HASH_ONLY_MODE = input
+
+def setVTTimeStamp():
+    global VT_SCAN_TIMESTAMP
+    VT_SCAN_TIMESTAMP = time.time()
+
+def calcTimeSinceLastScan():
+    global VT_SCAN_TIMESTAMP
+    return time.time() - VT_SCAN_TIMESTAMP
 
 @click.command()
 @click.argument('file_path', type=click.Path(exists=True, readable=True))
@@ -127,10 +136,12 @@ def scanFiles(dirpath):
             subdir.append(path)
         elif os.path.isfile(path):
             files.append(analize(path))
-            time.sleep(1)
+            time.sleep(1) ## just to not overwhelm the api
     for directory in subdir:
         print('\n*** lookup in', directory, '***')
-        scanFiles(directory)
+        subdir_files = scanFiles(directory)
+        for ent in subdir_files:
+            files.append(ent)
     
     return files
     
@@ -165,12 +176,12 @@ def analize(path):
             VT_rep = 'negative' if VT_result['data']['attributes']['reputation'] < 0 else 'positive'
             VT_malicious = VT_result['data']['attributes']['last_analysis_stats']['malicious']
             report_link = 'https://www.virustotal.com/gui/file/' + out['sha1']
-            print("File {0} found in VT database with reputation of {1}, and {2} vendors marked it as malicious ".format(out['sha1'], VT_rep, VT_malicious))
-            print('for full report see: ' + report_link)
+            print("File {0} found in VT database with reputation of {1}, and {2} vendors marked it as malicious, VT REPORT @ {3} "
+                    .format(out['sha1'], VT_rep, VT_malicious, report_link))
             out['VT_result'] = VT_result
         
-    if VERBOSE:
-        print(out)
+    # if VERBOSE:
+    #     print(out)
     json_file = json.dumps(out, indent=4)
     logToFile(json_file, 'output.json')
 
@@ -210,6 +221,13 @@ def checkKnownFilesDB(hash):
 
 
 def checkFileInVT(hash):
+    timer = calcTimeSinceLastScan()
+    if timer < WAIT_TIMER:
+        if VERBOSE:
+            print('waiting', WAIT_TIMER - timer)
+        time.sleep(WAIT_TIMER - timer)
+        
+        
     
     #VT_API - Get a file report: https://developers.virustotal.com/reference/file-info
     url = "https://www.virustotal.com/api/v3/files/" + hash
@@ -222,14 +240,19 @@ def checkFileInVT(hash):
 
     logToFile(response.text, 'outputVT_hash.json')
 
-    time.sleep(WAIT_TIMER)
+    setVTTimeStamp()
     return json_resposne
 
 
 def uploadFileToVT(path):
+    timer = calcTimeSinceLastScan()
+    if timer < WAIT_TIMER:
+        if VERBOSE:
+            print('waiting', WAIT_TIMER - timer)
+        time.sleep(WAIT_TIMER - timer)
+        
 
     url = "https://www.virustotal.com/api/v3/files"
-
     payload = ""
     
     with open(path, 'rb') as file:
@@ -241,9 +264,9 @@ def uploadFileToVT(path):
 
     response = requests.request("POST", url, data=payload, headers=headers)
 
-    logToFile("uploaded to virus total:" + response.text, "outputVT_file.txt")
+    logToFile(response.text, "outputVT_file.json")
     
-    time.sleep(WAIT_TIMER)
+    setVTTimeStamp()
     return response.json()
 
 
@@ -254,42 +277,117 @@ def logToFile(text, filename):
         with open(file, "a") as file_out:
             file_out.write(text)
 
-def report(out_list, path):
-    report_path = os.path.join(path,'report.csv')
-    first_row = [
-        'name', 
-        'path', 
-        'sha1', 
-        'type',
-        'In Known files database',
-        'signed by',
-        'VT Reputation',
-        'VT malicious',
-        'VT undetected',
-        'VT harmless'
-        ]
+def report(data_list, out_path):
+    report_path = os.path.join(out_path,'report.txt')
+    num = 0
 
-    with open(report_path, 'w') as file:
-        csvwriter = csv.writer(file, delimiter=',',)
-        csvwriter.writerow(first_row)
-        for data in out_list:
-            data_row = [
-                data['name'],
-                data['path'],
-                data['sha1'],
-                data['type'],
-                data['known_file_results']['source'] if 'known_file_results' in data else 'n/a',
-                data['known_file_results']['signer'] if 'known_file_results' in data else 'n/a',
-                data['VT_result']['data']['attributes']['reputation'] if 'VT_result' in data else 'n/a',
-                data['VT_result']['data']['attributes']['last_analysis_stats']['malicious'] if 'VT_result' in data else 'n/a',
-                data['VT_result']['data']['attributes']['last_analysis_stats']['undetected'] if 'VT_result' in data else 'n/a',
-                data['VT_result']['data']['attributes']['last_analysis_stats']['harmless'] if 'VT_result' in data else 'n/a']
+    known_files = []
+    VT_files = []
+    VT_uploaded_files = []
+    error_files = []
 
-            csvwriter.writerow(data_row)
-            if VERBOSE:
-                print("writing data to file...")
-    print('report completed')
-    pass
+
+
+
+    for file_data in data_list:
+        if 'known_file_results' in file_data:
+            known_files.append(file_data)
+
+        elif 'VT_result' in file_data:
+            if 'data' in file_data['VT_result']:
+                VT_files.append(file_data)
+
+            elif 'status' == 'uploaded for analysis':
+                VT_uploaded_files(file_data)
+
+        else:
+            error_files.append(file_data)
+
+    report = ["*** File scan completed " + time.asctime(time.localtime(time.time())) + '***']
+    report.append("\nTotal Files scanned: " + str(len(file_data))+ '\n')
+
+    report.append("\nFiles identified in know programs database: " + str(len(known_files)))
+    for entry in known_files:
+        string = 'File:\t' + entry['name']
+        string += ' [' + entry['sha1'] + '] ' 
+        string += '\tfound @ ' + entry['path'] 
+        string += '\tMIME type:' + entry['type']
+        string += '\tverified using database: ' + entry['known_file_results']['source'] + '\t signed by ' + entry['known_file_results']['signer']
+        report.append(string)
+
+    report.append("\nFiles found in Virus Total database: " + str(len(VT_files)))
+    for entry in VT_files:
+        report_link = 'https://www.virustotal.com/gui/file/' + entry['sha1']
+        times_submitted = entry['VT_result']['data']['attributes']['times_submitted']
+        VT_Vote = entry['VT_result']['data']['attributes']['total_votes']
+        VT_rep = 'negative' if entry['VT_result']['data']['attributes']['reputation'] < 0 else 'positive'
+        VT_malicious = entry['VT_result']['data']['attributes']['last_analysis_stats']['malicious']
+
+
+        string = 'File:\t' + entry['name']
+        string += ' [' + entry['sha1'] + '] ' 
+        string += '\tfound @ ' + entry['path'] 
+        string += '\tMIME type:' + entry['type']
+        string += "\n\t This file has {} reputation, and was detected as malicious by {} vendors".format(VT_rep,VT_malicious)
+        string += "\n\t The VT Community voted this file: \t {} malicious / {} harmless".format(VT_Vote['malicious'], VT_Vote['harmless'])
+        string += "\n\t Full VT report at " + report_link
+        report.append(string)
+    
+    report.append("\nFiles uploaded to Virus Total for analysis: " + str(len(VT_uploaded_files)))
+    for entry in VT_uploaded_files:
+        string = 'File:\t' + entry['name']
+        string += ' [' + entry['sha1'] + '] ' 
+        string += '\tfound @ ' + entry['path'] 
+        string += '\tMIME type:' + entry['type']
+        string += '\tFile was uplaoded to VT for analysis, please check the VT database @ ' + entry['VT_result']['link']
+        report.append(string)
+
+
+    with open(report_path, 'a') as r:
+        for line in report:
+            r.write(line + '\n')
+        r.write('\n*** END ***\n\n')
+            
+        
+        
+
+## I dont like spreadsheets... working code but replaced with report file writen to txt file.
+# def report(out_list, path):
+#     report_path = os.path.join(path,'report.csv')
+#     first_row = [
+#         'name', 
+#         'path', 
+#         'sha1', 
+#         'type',
+#         'In Known files database',
+#         'signed by',
+#         'VT Reputation',
+#         'VT malicious',
+#         'VT undetected',
+#         'VT harmless'
+#         ]
+
+#     with open(report_path, 'w') as file:
+#         csvwriter = csv.writer(file, delimiter=',',)
+#         csvwriter.writerow(first_row)
+#         for data in out_list:
+#             data_row = [
+#                 data['name'],
+#                 data['path'],
+#                 data['sha1'],
+#                 data['type'],
+#                 data['known_file_results']['source'] if 'known_file_results' in data else 'n/a',
+#                 data['known_file_results']['signer'] if 'known_file_results' in data else 'n/a',
+#                 data['VT_result']['data']['attributes']['reputation'] if 'VT_result' in data else 'n/a',
+#                 data['VT_result']['data']['attributes']['last_analysis_stats']['malicious'] if 'VT_result' in data else 'n/a',
+#                 data['VT_result']['data']['attributes']['last_analysis_stats']['undetected'] if 'VT_result' in data else 'n/a',
+#                 data['VT_result']['data']['attributes']['last_analysis_stats']['harmless'] if 'VT_result' in data else 'n/a']
+
+#             csvwriter.writerow(data_row)
+#             if VERBOSE:
+#                 print("writing data to file...")
+#     print('report completed')
+#     pass
 
 
 
