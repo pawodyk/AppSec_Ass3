@@ -119,11 +119,22 @@ def main(file_path, isVerbose, log, report_ouput, hash_only, interface, wait_tim
             exit()
 
     ## check does the user want to scan file or folder
-    if os.path.isfile(file_path):
-        analize(file_path)
-    else:
-        x = scanFiles(file_path)
-        report(x, report_ouput)
+    try:
+        if os.path.isfile(file_path):
+            result = analize(file_path)
+            report([result], report_ouput)
+        else:
+            results = scanFiles(file_path)
+            report(results, report_ouput)
+    except ValueError as ex_val:
+        print('Incorrect Value Exception the data could not be parsed: \n',ex_val.__str__ )
+    except TypeError as ex_type:
+        print('Incorrect type data type, with message: ', ex_type.__str__ )
+    except OSError as ex_os:
+        print('OS Error occured with message: ', ex_os.strerror)
+    except Exception as ex_:
+        print(ex_.__str__)
+    
 
 
 def scanFiles(dirpath):
@@ -158,7 +169,7 @@ def analize(path):
         VT_result = checkFileInVT(out['sha1'])
         if 'error' in VT_result:
             if VERBOSE:
-                print(VT_result['error']['code'])
+                print('Virus Total returned fillowing error:',VT_result['error']['code'])
             if VT_result['error']['code'] == 'NotFoundError':
                 if not HASH_ONLY_MODE:
                     if VERBOSE:
@@ -304,7 +315,7 @@ def report(data_list, out_path):
             error_files.append(file_data)
 
     report = ["*** File scan completed " + time.asctime(time.localtime(time.time())) + '***']
-    report.append("\nTotal Files scanned: " + str(len(file_data))+ '\n')
+    report.append("\nTotal Files scanned: " + str(len(file_data)))
 
     report.append("\nFiles identified in know programs database: " + str(len(known_files)))
     for entry in known_files:
@@ -342,6 +353,10 @@ def report(data_list, out_path):
         string += '\tFile was uplaoded to VT for analysis, please check the VT database @ ' + entry['VT_result']['link']
         report.append(string)
 
+    if error_files :
+        report.append("Following files could not be processed and they will have to be manually checked")
+        for entry in error_files:    
+            report.append(str(entry))
 
     with open(report_path, 'a') as r:
         for line in report:
