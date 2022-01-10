@@ -84,7 +84,7 @@ def calcTimeSinceLastScan():
 @click.option('-H', '--hash_only', 'hash_only', is_flag=True,
     help="prevent software from uplaoding files to VT, the software will only check Hashes")
 @click.option('-i', '--interface', is_flag=True, help = "execute user interface")
-@click.option('-w', '--wait', 'wait_time', default=30, type=click.IntRange(min=0, max=60, clamp=True),
+@click.option('-w', '--wait', 'wait_time', default=30, type=click.IntRange(min=0, max=600, clamp=True),
     help="define wait time between file scans in seconds")
 def main(file_path, isVerbose, log, report_ouput, hash_only, interface, wait_time):
     """
@@ -121,7 +121,7 @@ def main(file_path, isVerbose, log, report_ouput, hash_only, interface, wait_tim
     ## check does the user want to scan file or folder
     try:
         if os.path.isfile(file_path):
-            result = analize(file_path)
+            result = analyze(file_path)
             report([result], report_ouput)
         else:
             results = scanFiles(file_path)
@@ -136,7 +136,6 @@ def main(file_path, isVerbose, log, report_ouput, hash_only, interface, wait_tim
         print(ex_.__str__)
     
 
-
 def scanFiles(dirpath):
     os.chdir(dirpath)
     subdir = []
@@ -146,7 +145,7 @@ def scanFiles(dirpath):
         if os.path.isdir(path):
             subdir.append(path)
         elif os.path.isfile(path):
-            files.append(analize(path))
+            files.append(analyze(path))
             time.sleep(1) ## just to not overwhelm the api
     for directory in subdir:
         print('\n*** lookup in', directory, '***')
@@ -156,7 +155,7 @@ def scanFiles(dirpath):
     
     return files
     
-def analize(path):
+def analyze(path):
     out = readfile(path)
     print('checking file:\t',out['name'],out['sha1'])
     file_check = checkKnownFilesDB(out['sha1'])
@@ -174,7 +173,7 @@ def analize(path):
                 if not HASH_ONLY_MODE:
                     if VERBOSE:
                         print("File not in VT database, uploading the file for analysis")
-                    output_upload_file = uploadFileToVT(os.path.join(out['path'],out['name']))
+                    output_upload_file = uploadFileToVT(path) #os.path.join(out['path'],out['name'])) ## use path?
                     if 'data' in output_upload_file:
                         if output_upload_file['data']['type'] == 'analysis':
                             report_link = 'https://www.virustotal.com/gui/file/' + out['sha1']
@@ -215,7 +214,6 @@ def readfile(filepath):
     else:
         return None
 
-
 def checkKnownFilesDB(hash):
     url = 'http://bin-test.shadowserver.org/api?sha1=' + hash
     response = requests.request("GET", url)
@@ -230,7 +228,6 @@ def checkKnownFilesDB(hash):
     else:
         return None
 
-
 def checkFileInVT(hash):
     timer = calcTimeSinceLastScan()
     if timer < WAIT_TIMER:
@@ -238,7 +235,7 @@ def checkFileInVT(hash):
             print('waiting', WAIT_TIMER - timer)
         time.sleep(WAIT_TIMER - timer)
         
-        
+    json_resposne = {}
     
     #VT_API - Get a file report: https://developers.virustotal.com/reference/file-info
     url = "https://www.virustotal.com/api/v3/files/" + hash
@@ -247,13 +244,15 @@ def checkFileInVT(hash):
         "x-apikey": VT_API_KEY
     }
     response = requests.request("GET", url, headers=headers)
-    json_resposne = response.json()
+    try:
+        json_resposne = response.json()
+    except Exception:
+        pass
 
     logToFile(response.text, 'outputVT_hash.json')
 
     setVTTimeStamp()
     return json_resposne
-
 
 def uploadFileToVT(path):
     timer = calcTimeSinceLastScan()
@@ -262,6 +261,8 @@ def uploadFileToVT(path):
             print('waiting', WAIT_TIMER - timer)
         time.sleep(WAIT_TIMER - timer)
         
+
+    json_resposne = {}
 
     url = "https://www.virustotal.com/api/v3/files"
     payload = ""
@@ -273,32 +274,35 @@ def uploadFileToVT(path):
         "x-apikey": VT_API_KEY
     }
 
-    response = requests.request("POST", url, data=payload, headers=headers)
+    response = requests.request("POST", url, files=payload, headers=headers)
+    try:
+        json_resposne = response.json()
+    except Exception:
+        pass
+
 
     logToFile(response.text, "outputVT_file.json")
     
     setVTTimeStamp()
-    return response.json()
-
+    return json_resposne
 
 def logToFile(text, filename):
-    if LOG_TO_FILE:
-        text = str(text)
-        file = os.path.join(LOG_DIR, filename)
-        with open(file, "a") as file_out:
-            file_out.write(text)
+    try:
+        if LOG_TO_FILE:
+            text = str(text)
+            file = os.path.join(LOG_DIR, filename)
+            with open(file, "a") as file_out:
+                file_out.write(text)
+    except Exception:
+        print('ERROR: Could not log to file: ' + file )
 
 def report(data_list, out_path):
     report_path = os.path.join(out_path,'report.txt')
-    num = 0
 
     known_files = []
     VT_files = []
     VT_uploaded_files = []
     error_files = []
-
-
-
 
     for file_data in data_list:
         if 'known_file_results' in file_data:
@@ -315,7 +319,7 @@ def report(data_list, out_path):
             error_files.append(file_data)
 
     report = ["*** File scan completed " + time.asctime(time.localtime(time.time())) + '***']
-    report.append("\nTotal Files scanned: " + str(len(file_data)))
+    report.append("\nTotal Files scanned: " + str(len(data_list)))
 
     report.append("\nFiles identified in know programs database: " + str(len(known_files)))
     for entry in known_files:
@@ -354,7 +358,7 @@ def report(data_list, out_path):
         report.append(string)
 
     if error_files :
-        report.append("Following files could not be processed and they will have to be manually checked")
+        report.append("\n\nFollowing files could not be processed and they will have to be manually checked")
         for entry in error_files:    
             report.append(str(entry))
 
@@ -363,8 +367,6 @@ def report(data_list, out_path):
             r.write(line + '\n')
         r.write('\n*** END ***\n\n')
             
-        
-        
 
 ## I dont like spreadsheets... working code but replaced with report file writen to txt file.
 # def report(out_list, path):
@@ -404,11 +406,13 @@ def report(data_list, out_path):
 #     print('report completed')
 #     pass
 
-
-
 def runUserInterface():
     print("user interface will go here!")
     exit()
+
+
+
+
 
 if __name__ == '__main__':
     main()

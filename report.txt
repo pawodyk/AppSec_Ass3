@@ -1,0 +1,72 @@
+*** File scan completed Mon Jan 10 23:23:46 2022***
+
+Total Files scanned: 5
+
+Files identified in know programs database: 0
+
+Files found in Virus Total database: 5
+File:	aaa.txt [1028e6c8783ee09d59a59a2d0f8f4e27d4b8fa76] 	found @ D:\Desktop\Code\MalFileDetTool\sample\test	MIME type:text/plain
+	 This file has positive reputation, and was detected as malicious by 0 vendors
+	 The VT Community voted this file: 	 0 malicious / 0 harmless
+	 Full VT report at https://www.virustotal.com/gui/file/1028e6c8783ee09d59a59a2d0f8f4e27d4b8fa76
+File:	AIMP.exe [598851016ecd23e11bc0d524ee5b363ac206247f] 	found @ D:\Desktop\Code\MalFileDetTool\sample\test	MIME type:application/x-dosexec
+	 This file has positive reputation, and was detected as malicious by 0 vendors
+	 The VT Community voted this file: 	 0 malicious / 0 harmless
+	 Full VT report at https://www.virustotal.com/gui/file/598851016ecd23e11bc0d524ee5b363ac206247f
+File:	GlassWire.exe [3d9d052dde1c560ab13ffa91c43c3d1eb3961dc3] 	found @ D:\Desktop\Code\MalFileDetTool\sample\test	MIME type:application/x-dosexec
+	 This file has positive reputation, and was detected as malicious by 0 vendors
+	 The VT Community voted this file: 	 0 malicious / 0 harmless
+	 Full VT report at https://www.virustotal.com/gui/file/3d9d052dde1c560ab13ffa91c43c3d1eb3961dc3
+File:	php.exe [88cc67595007a6064b547efd9bae906e8e0237df] 	found @ D:\Desktop\Code\MalFileDetTool\sample\test	MIME type:application/x-dosexec
+	 This file has positive reputation, and was detected as malicious by 0 vendors
+	 The VT Community voted this file: 	 0 malicious / 0 harmless
+	 Full VT report at https://www.virustotal.com/gui/file/88cc67595007a6064b547efd9bae906e8e0237df
+File:	requirements.txt [8b55a6db5789f658409decf461a644916e376100] 	found @ D:\Desktop\Code\MalFileDetTool\sample\test	MIME type:text/plain
+	 This file has positive reputation, and was detected as malicious by 0 vendors
+	 The VT Community voted this file: 	 0 malicious / 0 harmless
+	 Full VT report at https://www.virustotal.com/gui/file/8b55a6db5789f658409decf461a644916e376100
+
+Files uploaded to Virus Total for analysis: 0
+
+*** END ***
+
+*** File scan completed Mon Jan 10 23:24:05 2022***
+
+Total Files scanned: 1
+
+Files identified in know programs database: 0
+
+Files found in Virus Total database: 1
+File:	aaa.txt [1028e6c8783ee09d59a59a2d0f8f4e27d4b8fa76] 	found @ .\sample\test	MIME type:text/plain
+	 This file has positive reputation, and was detected as malicious by 0 vendors
+	 The VT Community voted this file: 	 0 malicious / 0 harmless
+	 Full VT report at https://www.virustotal.com/gui/file/1028e6c8783ee09d59a59a2d0f8f4e27d4b8fa76
+
+Files uploaded to Virus Total for analysis: 0
+
+*** END ***
+
+*** File scan completed Mon Jan 10 23:32:54 2022***
+
+Total Files scanned: 3
+
+Files identified in know programs database: 0
+
+Files found in Virus Total database: 3
+File:	aaa.txt [1028e6c8783ee09d59a59a2d0f8f4e27d4b8fa76] 	found @ D:\Desktop\Code\MalFileDetTool\sample\test	MIME type:text/plain
+	 This file has positive reputation, and was detected as malicious by 0 vendors
+	 The VT Community voted this file: 	 0 malicious / 0 harmless
+	 Full VT report at https://www.virustotal.com/gui/file/1028e6c8783ee09d59a59a2d0f8f4e27d4b8fa76
+File:	php.exe [88cc67595007a6064b547efd9bae906e8e0237df] 	found @ D:\Desktop\Code\MalFileDetTool\sample\test	MIME type:application/x-dosexec
+	 This file has positive reputation, and was detected as malicious by 0 vendors
+	 The VT Community voted this file: 	 0 malicious / 0 harmless
+	 Full VT report at https://www.virustotal.com/gui/file/88cc67595007a6064b547efd9bae906e8e0237df
+File:	requirements.txt [8b55a6db5789f658409decf461a644916e376100] 	found @ D:\Desktop\Code\MalFileDetTool\sample\test	MIME type:text/plain
+	 This file has positive reputation, and was detected as malicious by 0 vendors
+	 The VT Community voted this file: 	 0 malicious / 0 harmless
+	 Full VT report at https://www.virustotal.com/gui/file/8b55a6db5789f658409decf461a644916e376100
+
+Files uploaded to Virus Total for analysis: 0
+
+*** END ***
+
