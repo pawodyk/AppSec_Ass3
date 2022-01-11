@@ -1,6 +1,6 @@
-import os , hashlib, json, time, csv
+import os , hashlib, json, time, csv, mimetypes
 from dotenv import load_dotenv
-import requests, magic, click
+import requests, click
 
 
 # set global variables
@@ -203,7 +203,7 @@ def readfile(filepath):
         with open(filepath, 'rb') as file:
             file_sha1 = hashlib.sha1(file.read())
             pathsplit = os.path.split(filepath)
-            file_type = magic.from_file(filepath, mime=True)
+            file_type = mimetypes.guess_type(filepath)[0] # magic.from_file(filepath, mime=True) ##not working on Linux
             # print('filename: {1}\t located at {0}\t SHA1: {2}'.format(pathsplit[0],pathsplit[1],))  # , file_sha1.hexdigest()
             out.update({'name' : pathsplit[1]})
             out.update({'path' : pathsplit[0]})
